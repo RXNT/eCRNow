@@ -1,0 +1,88 @@
+version: 2.1
+
+setup: true
+
+parameters:
+  prod-base-revision:
+    type: string
+    default: "main"
+  qa-base-revision:
+    type: string
+    default: "QA"
+  dev-base-revision:
+    type: string
+    default: "development"
+
+orbs:
+  path-filtering: circleci/path-filtering@0.1.3
+  continuation: circleci/continuation@0.2.0
+
+commands:
+  pre-check:
+    steps:
+      - run:
+          name: Running Pre-Check Script to Generate Build Context
+          command: |
+            chmod a+x .circleci/pre-check.sh
+            . .circleci/pre-check.sh
+      - run:
+          name: Display Parameters from Pre-Check Script
+          command: |
+            cat /tmp/ci_parameters.json | jq
+
+workflows:
+  prod-workflow:
+    jobs:
+      - continuation/continue:
+          name: prod-workflow-continuation
+          pre-steps:
+            - checkout
+            - pre-check
+          configuration_path: .circleci/workflow.yml
+          parameters: /tmp/ci_parameters.json
+          filters:
+            branches:
+              only:
+                - main
+  qa-workflow:
+    jobs:
+      - continuation/continue:
+          name: qa-workflow-continuation
+          pre-steps:
+            - checkout
+            - pre-check
+          parameters: /tmp/ci_parameters.json
+          configuration_path: .circleci/workflow.yml
+          filters:
+            branches:
+              only:
+                - QA
+  dev-workflow:
+    jobs:
+      - continuation/continue:
+          name: dev-workflow-continuation
+          pre-steps:
+            - checkout
+            - pre-check
+          parameters: /tmp/ci_parameters.json
+          configuration_path: .circleci/workflow.yml
+          filters:
+            branches:
+              only:
+                - development
+
+  build-test-workflow:
+    jobs:
+      - continuation/continue:
+          name: build-test-workflow-continuation
+          pre-steps:
+            - checkout
+            - pre-check
+          parameters: /tmp/ci_parameters.json
+          configuration_path: .circleci/workflow.yml
+          filters:
+            branches:
+              ignore:
+                - main
+                - QA
+                - development
