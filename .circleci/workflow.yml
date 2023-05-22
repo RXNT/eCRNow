@@ -411,8 +411,6 @@ workflows:
     jobs:
       - execution-check:
           context: << pipeline.parameters.dynamic-context >>
-          requires:
-            - application-tests
 
       - build:
           context: << pipeline.parameters.dynamic-context >>
