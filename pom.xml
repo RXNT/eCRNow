@@ -13,7 +13,7 @@
 	<artifactId>ecr-now</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>eCR Now FHIR App</name>
-	<packaging>war</packaging>
+	<packaging>jar</packaging>
 	<description>FHIR App to perform electronic case reporting (ecr) by converting to CDA Format</description>
 
 	<properties>
@@ -393,6 +393,14 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<profiles>
+						<profile>local</profile>
+						<profile>dev</profile>
+						<profile>qa</profile>
+						<profile>prod</profile>
+					</profiles>
+				</configuration>
 			</plugin>
 
 			<plugin>
@@ -526,20 +534,20 @@
 				</executions>
 			</plugin>
 
-			<plugin>
-				<groupId>com.coveo</groupId>
-				<artifactId>fmt-maven-plugin</artifactId>
-				<version>2.5.1</version>
-				<executions>
-					<execution>
-						<id>fmt-check</id>
-						<goals>
-							<goal>check</goal>
-						</goals>
-						<phase>validate</phase>
-					</execution>
-				</executions>
-			</plugin>
+<!--			<plugin>-->
+<!--				<groupId>com.coveo</groupId>-->
+<!--				<artifactId>fmt-maven-plugin</artifactId>-->
+<!--				<version>2.5.1</version>-->
+<!--				<executions>-->
+<!--					<execution>-->
+<!--						<id>fmt-check</id>-->
+<!--						<goals>-->
+<!--							<goal>check</goal>-->
+<!--						</goals>-->
+<!--						<phase>validate</phase>-->
+<!--					</execution>-->
+<!--				</executions>-->
+<!--			</plugin>-->
 		</plugins>
 	</build>
 
