@@ -303,7 +303,7 @@ jobs:
           tag: $CIRCLE_SHA1
           dockerfile: Dockerfile-<< pipeline.parameters.az-environment >>
           path: /home/circleci/project
-      - prepare-dotnet-core-app-settings-and-save-to-workspace:
+      - prepare-java-app-properties-and-save-to-workspace:
           input: /home/circleci/project/src/main/resources/application-<< pipeline.parameters.az-environment >>.properties
           output-file-name: ecr-now-app-env.json
       - openvpn-disconnect
