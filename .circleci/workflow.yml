@@ -48,7 +48,8 @@ commands:
       - run:
           name: Prepare app configuration configuration
           command: |
-            python3 /home/circleci/project/.circleci/app_properties.py \
+            pip3 install python-dotenv
+            python3 /home/circleci/project/.circleci/env_settings.py \
               --filename << parameters.input >> \
               --output /home/circleci/project/<< parameters.output-file-name >>
       - persist_to_workspace:
