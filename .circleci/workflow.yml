@@ -433,12 +433,12 @@ workflows:
           requires:
             - deploy-gatekeeper
 
-#      - deploy:
-#          context: << pipeline.parameters.dynamic-context >>
-#          requires:
-#            - hold
-#
-#      - health-check:
-#          context: << pipeline.parameters.dynamic-context >>
-#          requires:
-#            - deploy
+      - deploy:
+          context: << pipeline.parameters.dynamic-context >>
+          requires:
+            - hold
+
+      - health-check:
+          context: << pipeline.parameters.dynamic-context >>
+          requires:
+            - deploy
