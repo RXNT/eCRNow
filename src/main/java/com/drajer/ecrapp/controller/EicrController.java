@@ -254,6 +254,6 @@ public class EicrController {
     @GetMapping(value = "/api/health", produces = MediaType.APPLICATION_JSON_VALUE)
     public String health()
             throws InterruptedException {
-        return "Health";
+        return "Healthy";
     }
 }
