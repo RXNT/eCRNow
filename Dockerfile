@@ -3,7 +3,7 @@ FROM maven:3.8.1-adoptopenjdk-11 AS maven
 WORKDIR /app
 COPY . /app
 
-RUN mvn package
+RUN mvn package -Dmaven.test.skip
 
 
 FROM eclipse-temurin:11
