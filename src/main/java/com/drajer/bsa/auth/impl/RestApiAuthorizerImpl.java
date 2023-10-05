@@ -23,7 +23,7 @@ public class RestApiAuthorizerImpl implements RestApiAuthorizationHeaderIf {
         String securityToken = environment.getRequiredProperty("ecr.auth.token");
 
         // Set Authorization Header
-        headers.add("Authorization", "Bearer " + securityToken);
+        headers.add("X-Api-Key", securityToken);
         return headers;
     }
 }
