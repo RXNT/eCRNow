@@ -20,7 +20,7 @@ public class RestApiAuthorizerImpl implements RestApiAuthorizationHeaderIf {
         HttpHeaders headers = new HttpHeaders();
         logger.info("Fetching the AccessToken");
 
-        String securityToken = environment.getRequiredProperty("ecr.auth.token");
+        String securityToken = environment.getRequiredProperty("rxnt.api.key");
 
         // Set Authorization Header
         headers.add("X-Api-Key", securityToken);
