@@ -16,6 +16,7 @@ import com.drajer.cda.parser.CdaParserConstants;
 import com.drajer.cda.parser.CdaRrModel;
 import com.drajer.cda.parser.RrParser;
 import com.drajer.ecrapp.model.EicrTypes;
+import com.drajer.ecrapp.model.RXNTRrReceiverRequest;
 import com.drajer.ecrapp.model.ReportabilityResponse;
 import com.drajer.sof.utils.FhirContextInitializer;
 import java.time.Instant;
@@ -24,6 +25,7 @@ import javax.transaction.Transactional;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.DocumentReference;
 import org.json.JSONObject;
+import org.json.XML;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -255,9 +257,13 @@ public class RrReceiverImpl implements RrReceiver {
       /** Call EHRV8 Extension API to save document */
       RestTemplate restTemplate = new RestTemplate();
       HttpHeaders headers = new HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_XML);
-  
-      HttpEntity<String> request = new HttpEntity<>(rrXml, headers);
+      headers.setContentType(MediaType.APPLICATION_JSON);
+
+      int encounterId = Integer.parseInt(rrModel.getEncounterId().getValue().replace("enc-id-", ""));
+      int patientId = Integer.parseInt(rrModel.getPatientId().getValue().replace("pa-id-", ""));
+      RXNTRrReceiverRequest requestBody = new RXNTRrReceiverRequest(encounterId, patientId, rrXml);
+
+      HttpEntity<String> request = new HttpEntity<>(new JSONObject(requestBody).toString(), headers);
   
       ResponseEntity<?> response =
           restTemplate.exchange(
