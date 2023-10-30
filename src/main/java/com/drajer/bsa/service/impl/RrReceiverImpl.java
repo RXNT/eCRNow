@@ -239,18 +239,33 @@ public class RrReceiverImpl implements RrReceiver {
     logger.info("Cda Rr Model:{}", rrModel);
 
     boolean isSubmitSuccess = false;
-    RestTemplate restTemplate = new RestTemplate();
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_XML);
 
-    HttpEntity<String> request = new HttpEntity<>(rrXml, headers);
+    /**
+     * Only send documents which are reportable to the EHRV8 Extension API
+     */
+    if (phm.getResponseProcessingInstruction() != null) {
+      boolean isReportable = (phm.getResponseProcessingInstruction().equals(EicrTypes.ReportabilityType.RRVS1.toString()) ||
+        phm.getResponseProcessingInstruction().equals(EicrTypes.ReportabilityType.RRVS2.toString()));
 
-    ResponseEntity<?> response =
-        restTemplate.exchange(
-            hs.getHandOffResponseToRestApi(), HttpMethod.POST, request, String.class);
+      if (!isReportable) {
+        logger.info("Reportability Response document isn't reportable.");
+        return true;
+      }
 
-    if (response.getStatusCode().is2xxSuccessful()) {
-      isSubmitSuccess = true;
+      /** Call EHRV8 Extension API to save document */
+      RestTemplate restTemplate = new RestTemplate();
+      HttpHeaders headers = new HttpHeaders();
+      headers.setContentType(MediaType.APPLICATION_XML);
+  
+      HttpEntity<String> request = new HttpEntity<>(rrXml, headers);
+  
+      ResponseEntity<?> response =
+          restTemplate.exchange(
+              hs.getHandOffResponseToRestApi(), HttpMethod.POST, request, String.class);
+  
+      if (response.getStatusCode().is2xxSuccessful()) {
+        isSubmitSuccess = true;
+      }
     }
 
     return isSubmitSuccess;
