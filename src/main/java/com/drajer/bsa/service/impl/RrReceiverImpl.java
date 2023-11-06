@@ -5,6 +5,8 @@ import ca.uhn.fhir.context.FhirVersionEnum;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.UnclassifiedServerFailureException;
+
+import com.drajer.bsa.auth.impl.RestApiAuthorizerImpl;
 import com.drajer.bsa.dao.HealthcareSettingsDao;
 import com.drajer.bsa.dao.PublicHealthMessagesDao;
 import com.drajer.bsa.ehr.service.EhrQueryService;
@@ -25,7 +27,6 @@ import javax.transaction.Transactional;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.DocumentReference;
 import org.json.JSONObject;
-import org.json.XML;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +62,8 @@ public class RrReceiverImpl implements RrReceiver {
   @Autowired EhrQueryService ehrService;
 
   @Autowired FhirContextInitializer fhirContextInitializer;
+
+  @Autowired RestApiAuthorizerImpl restApiAuthorizerImpl;
 
   /**
    * The method is used to handle a failure MDN that is received from the Direct channel.
@@ -235,6 +238,14 @@ public class RrReceiverImpl implements RrReceiver {
     return docRef;
   }
 
+  public int tryParseInt(String value, int defaultVal) {
+    try {
+        return Integer.parseInt(value);
+    } catch (NumberFormatException e) {
+        return defaultVal;
+    }
+}
+
   private boolean submitResponseToRestApi(
       PublicHealthMessage phm, CdaRrModel rrModel, HealthcareSetting hs, String rrXml) {
     logger.info("Public Health Message:{}", phm);
@@ -256,11 +267,19 @@ public class RrReceiverImpl implements RrReceiver {
 
       /** Call EHRV8 Extension API to save document */
       RestTemplate restTemplate = new RestTemplate();
-      HttpHeaders headers = new HttpHeaders();
+      HttpHeaders headers = restApiAuthorizerImpl.getAuthorizationHeader(null);
       headers.setContentType(MediaType.APPLICATION_JSON);
 
-      int encounterId = Integer.parseInt(rrModel.getEncounterId().getValue().replace("enc-id-", ""));
-      int patientId = Integer.parseInt(rrModel.getPatientId().getValue().replace("pa-id-", ""));
+      
+      int defaultId = 0;
+      int encounterId = tryParseInt(rrModel.getEncounterId().getValue().replace("enc-id-", ""), defaultId);
+      int patientId = Integer.parseInt(rrModel.getPatientId().getValue().replace("pa-id-", ""), defaultId);
+
+      if (encounterId == 0 || patientId == 0) {
+        logger.error("Invalid encounter/patient ID retrieved from Reportability Response document.");
+        return false;
+      }
+
       RXNTRrReceiverRequest requestBody = new RXNTRrReceiverRequest(encounterId, patientId, rrXml);
 
       HttpEntity<String> request = new HttpEntity<>(new JSONObject(requestBody).toString(), headers);
