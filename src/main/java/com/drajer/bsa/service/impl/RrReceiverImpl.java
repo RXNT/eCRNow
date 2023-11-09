@@ -5,6 +5,8 @@ import ca.uhn.fhir.context.FhirVersionEnum;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.UnclassifiedServerFailureException;
+
+import com.drajer.bsa.auth.impl.RestApiAuthorizerImpl;
 import com.drajer.bsa.dao.HealthcareSettingsDao;
 import com.drajer.bsa.dao.PublicHealthMessagesDao;
 import com.drajer.bsa.ehr.service.EhrQueryService;
@@ -16,6 +18,7 @@ import com.drajer.cda.parser.CdaParserConstants;
 import com.drajer.cda.parser.CdaRrModel;
 import com.drajer.cda.parser.RrParser;
 import com.drajer.ecrapp.model.EicrTypes;
+import com.drajer.ecrapp.model.RXNTRrReceiverRequest;
 import com.drajer.ecrapp.model.ReportabilityResponse;
 import com.drajer.sof.utils.FhirContextInitializer;
 import java.time.Instant;
@@ -59,6 +62,8 @@ public class RrReceiverImpl implements RrReceiver {
   @Autowired EhrQueryService ehrService;
 
   @Autowired FhirContextInitializer fhirContextInitializer;
+
+  @Autowired RestApiAuthorizerImpl restApiAuthorizerImpl;
 
   /**
    * The method is used to handle a failure MDN that is received from the Direct channel.
@@ -233,24 +238,59 @@ public class RrReceiverImpl implements RrReceiver {
     return docRef;
   }
 
+  public int tryParseInt(String value, int defaultVal) {
+    try {
+        return Integer.parseInt(value);
+    } catch (NumberFormatException e) {
+        return defaultVal;
+    }
+}
+
   private boolean submitResponseToRestApi(
       PublicHealthMessage phm, CdaRrModel rrModel, HealthcareSetting hs, String rrXml) {
     logger.info("Public Health Message:{}", phm);
     logger.info("Cda Rr Model:{}", rrModel);
 
     boolean isSubmitSuccess = false;
-    RestTemplate restTemplate = new RestTemplate();
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_XML);
 
-    HttpEntity<String> request = new HttpEntity<>(rrXml, headers);
+    /**
+     * Only send documents which are reportable to the EHRV8 Extension API
+     */
+    if (phm.getResponseProcessingInstruction() != null) {
+      boolean isReportable = (phm.getResponseProcessingInstruction().equals(EicrTypes.ReportabilityType.RRVS1.toString()) ||
+        phm.getResponseProcessingInstruction().equals(EicrTypes.ReportabilityType.RRVS2.toString()));
 
-    ResponseEntity<?> response =
-        restTemplate.exchange(
-            hs.getHandOffResponseToRestApi(), HttpMethod.POST, request, String.class);
+      if (!isReportable) {
+        logger.info("Reportability Response document isn't reportable.");
+        return true;
+      }
 
-    if (response.getStatusCode().is2xxSuccessful()) {
-      isSubmitSuccess = true;
+      /** Call EHRV8 Extension API to save document */
+      RestTemplate restTemplate = new RestTemplate();
+      HttpHeaders headers = restApiAuthorizerImpl.getAuthorizationHeader(null);
+      headers.setContentType(MediaType.APPLICATION_JSON);
+
+      
+      int defaultId = 0;
+      int encounterId = tryParseInt(rrModel.getEncounterId().getValue().replace("enc-id-", ""), defaultId);
+      int patientId = Integer.parseInt(rrModel.getPatientId().getValue().replace("pa-id-", ""), defaultId);
+
+      if (encounterId == 0 || patientId == 0) {
+        logger.error("Invalid encounter/patient ID retrieved from Reportability Response document.");
+        return false;
+      }
+
+      RXNTRrReceiverRequest requestBody = new RXNTRrReceiverRequest(encounterId, patientId, rrXml);
+
+      HttpEntity<String> request = new HttpEntity<>(new JSONObject(requestBody).toString(), headers);
+  
+      ResponseEntity<?> response =
+          restTemplate.exchange(
+              hs.getHandOffResponseToRestApi(), HttpMethod.POST, request, String.class);
+  
+      if (response.getStatusCode().is2xxSuccessful()) {
+        isSubmitSuccess = true;
+      }
     }
 
     return isSubmitSuccess;
