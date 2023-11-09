@@ -5,12 +5,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
+import org.springframework.stereotype.Service;
 
 import com.drajer.bsa.auth.RestApiAuthorizationHeaderIf;
 import com.drajer.bsa.model.KarProcessingData;
 
+@Service
 public class RestApiAuthorizerImpl implements RestApiAuthorizationHeaderIf {
-    private final Logger logger = LoggerFactory.getLogger(SampleRestApiAuthorizer.class);
+    private final Logger logger = LoggerFactory.getLogger(RestApiAuthorizerImpl.class);
 
     @Autowired private Environment environment;
 
