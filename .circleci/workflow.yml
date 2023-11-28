@@ -1,0 +1,444 @@
+version: 2.1
+
+parameters:
+  dynamic-context:
+    type: string
+    default: "none"
+  resource-group:
+    type: string
+    default: "none"
+  az-environment:
+    type: string
+    default: "none"
+  production-slot:
+    type: string
+    default: "none"
+
+orbs:
+  azure-cli: circleci/azure-cli@1.2.0
+  azure-acr: circleci/azure-acr@0.2.0
+
+executors:
+  ubuntu-vm:
+    machine:
+      image: ubuntu-2004:202111-01
+    resource_class: medium
+  docker-small:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+
+commands:
+
+  pre-check:
+    steps:
+      - run:
+          name: Running Pre-Check Script to Generate Build Context
+          command: |
+            chmod a+x .circleci/pre-check.sh
+            . .circleci/pre-check.sh
+
+  prepare-java-app-properties-and-save-to-workspace:
+    parameters:
+      input:
+        type: string
+      output-file-name:
+        type: string
+    steps:
+      - run:
+          name: Prepare app configuration configuration
+          command: |
+            pip3 install python-dotenv
+            python3 /home/circleci/project/.circleci/env_settings.py \
+              --filename << parameters.input >> \
+              --output /home/circleci/project/<< parameters.output-file-name >>
+      - persist_to_workspace:
+          root: /home/circleci/project
+          paths:
+            - << parameters.output-file-name >>
+
+  health-check-app:
+    parameters:
+      enabled:
+        type: boolean
+      app-name:
+        type: string
+      path:
+        type: string
+      wait-before:
+        type: integer
+        default: 10
+      timeout-in-sec:
+        type: integer
+        default: 10
+      slot:
+        type: string
+        default: production
+    steps:
+      - run: echo "starting..."
+      - when:
+          condition: << parameters.enabled >>
+          steps:
+            - configure-and-connect-openvpn
+            - run:
+                name: Run Health Check
+                command: |
+                  sleep << parameters.wait-before >>
+                  end=$((SECONDS+<< parameters.timeout-in-sec >>))
+                  health_check_endpoint="https://<< pipeline.parameters.az-environment >>-webapps-shared-<< parameters.app-name >>.<< pipeline.parameters.az-environment >>-baseinfra-ase-int.appserviceenvironment.net<< parameters.path >>"
+                  echo "Health check endpoint: $health_check_endpoint"
+                  while true; do
+                    http_status=$(curl -X GET -s -I "$health_check_endpoint" | head -n 1 | cut -d$' ' -f2)
+                    echo "Health check responded with $http_status"
+                    if [[ "$http_status" == "200" ]]; then
+                      echo "Health check OK"
+                      exit 0
+                    fi
+                    if [[ $SECONDS -gt $end ]]; then
+                      echo "Health check failed"
+                      exit -1
+                    fi
+                    sleep 1;
+                  done
+            - openvpn-disconnect
+
+  azure-deploy-docker-java:
+    parameters:
+      app-name:
+        type: string
+      app-settings-json:
+        # Must start with "@"
+        type: string
+      docker-repo:
+        type: string
+      docker-tag:
+        type: string
+    steps:
+      - run:
+          name: Modify app service container setting
+          command: |
+            az webapp config appsettings set \
+              -n << parameters.app-name >> \
+              -g << pipeline.parameters.resource-group >> << pipeline.parameters.production-slot >> \
+              --settings <<parameters.app-settings-json>> \
+                WEBSITE_PULL_IMAGE_OVER_VNET=true \
+                TZ='America/New_York'
+
+            az webapp config container set \
+              -n << parameters.app-name >> \
+              -g << pipeline.parameters.resource-group >> << pipeline.parameters.production-slot >> \
+              -i $CI_ACR.azurecr.io/<<parameters.docker-repo>>:<<parameters.docker-tag>> \
+              -r https://$CI_ACR.azurecr.io
+
+  docker-build-push:
+    parameters:
+      repo:
+        type: string
+      dockerfile:
+        default: "Dockerfile"
+        type: string
+      path:
+        type: string
+      tag:
+        type: string
+    steps:
+      - azure-acr/build-and-push-image:
+          repo: << parameters.repo >>
+          dockerfile: << parameters.dockerfile >>
+          path: << parameters.path >>
+          checkout: false
+          login-server-name: $CI_ACR.azurecr.io
+          registry-name: $CI_ACR
+          tag: << parameters.tag >>
+          extra-build-args: --build-arg GITHUB_USER=${GITHUB_USER} --build-arg GITHUB_PAT=${GITHUB_PAT}
+
+  configure-and-connect-openvpn:
+    steps:
+      - run:
+          name: Install ubuntu dependencies
+          command: sudo apt update && sudo apt-get install net-tools -y && sudo apt-get install dnsutils -y
+      - azure-cli/install
+      - azure-cli/login-with-service-principal
+      - run:
+          name: Install openvpn
+          command: sudo apt-get install openvpn -y
+      - run:
+          name: Configure and Connect to openvpn
+          background: true
+          command: |
+            echo $OVPN_CLIENT_CONFIG | base64 --decode > config.ovpn
+            DNS_FORWARDER=$(az container show -g $CI_BASE_GROUP -n $CI_ACI --query 'ipAddress.ip' | tr -d '"')
+            sudo sed -ie "1inameserver $DNS_FORWARDER" /etc/resolv.conf
+            sudo openvpn --config config.ovpn --route-metric 90 \
+                --route 169.254.0.0 255.255.0.0 net_gateway \
+                --daemon
+      - run:
+          name: Await Successful VPN Connection
+          command: |
+            end=$((SECONDS+180)) # timeout in one minute
+            while [ $(sudo cat openvpn.log | grep -c "Initialization Sequence Completed") == 0 ]; do
+              if [[ $SECONDS -gt $end ]]; then
+                echo "VPN connection timed out."
+                exit -1
+              fi
+              echo "Attempting to connect..."
+              sleep 1;
+            done
+            mv openvpn.log /tmp
+            echo "VPN Connected"
+      - run:
+          name: Verify Internal DNS Resolution
+          command: |
+            end=$((SECONDS+10))
+            while [[ ! $(dig +short $CI_ACR.azurecr.io | tail -1 | grep '^172') =~ ^172 ]] ; do
+              echo "Verifying internal DNS Resolution..."
+              sleep 1;            
+              if [[ $SECONDS -gt $end ]]; then
+              echo "DNS Resolution Check took longer than expected..."
+              echo ""
+              echo "Re-initiating VPN Connection"
+              sudo killall openvpn
+              exit 1
+              fi
+            done
+            echo "DNS Resolves internally"
+      - run:
+          name: Re-attempt VPN connection with Debug
+          command: |
+            echo $OVPN_CLIENT_CONFIG | base64 --decode > config.ovpn
+            DNS_FORWARDER=$(az container show -g $CI_BASE_GROUP -n $CI_ACI --query 'ipAddress.ip' | tr -d '"')
+            sudo sed -ie "1inameserver $DNS_FORWARDER" /etc/resolv.conf
+            echo ""
+            echo "Verifying Container Instance DNS in /etc/resolv.conf"
+            head -1 /etc/resolv.conf
+            echo ""
+            echo "Re-connecting OpenVPN"
+            sudo openvpn --config config.ovpn --route-metric 90 \
+                --route 169.254.0.0 255.255.0.0 net_gateway \
+                --daemon
+            sleep 5
+            echo "Showing OpenVPN connection log"
+            sudo cat openvpn.log    
+            end=$((SECONDS+10))
+            while [[ ! $(dig +short $CI_ACR.azurecr.io | tail -1 | grep '^172') =~ ^172 ]] ; do
+              echo "Verifying internal DNS Resolution..."
+              sleep 1;            
+              if [[ $SECONDS -gt $end ]]; then
+              echo "DNS Resolution Check took longer than expected..."
+              echo ""
+              echo "DNS Retry Failed. Please check VPN configuration"
+              sudo killall openvpn
+              exit 1
+              fi 
+            done
+            echo "DNS Resolves internally"
+          when: on_fail
+
+  openvpn-disconnect:
+    steps:
+      - run:
+          name: Disconnect from openvpn
+          when: always
+          command: sudo killall openvpn || true
+
+  production-slot-swap:
+    parameters:
+      enable-deploy:
+        type: boolean
+      app-name:
+        type: string
+    steps:
+      - run: echo "starting..."
+      - when:
+          condition:
+            and:
+              - equal: [true, << parameters.enable-deploy >>]
+              - equal: ["prod", << pipeline.parameters.az-environment >>]
+          steps:
+            - run:
+                name: Swapping Pipeline Slot to Production
+                command: |
+                  az webapp deployment slot swap -g << pipeline.parameters.resource-group >> \
+                    -n << pipeline.parameters.az-environment >>-webapps-<< parameters.app-name >> << pipeline.parameters.production-slot >> \
+                    --target-slot production
+
+
+jobs:
+
+  execution-check:
+    description: |
+      Gate to execute only if it is from "development", "QA", "main" OR has a PR attached.
+    executor: ubuntu-vm
+    steps:
+      - run:
+          name: Check
+          command: |
+            echo "CIRCLE_BRANCH=$CIRCLE_BRANCH"
+            echo "CIRCLE_PULL_REQUEST=$CIRCLE_PULL_REQUEST"
+
+            if [[ "$CIRCLE_BRANCH" == "QA" ]] || [[ "$CIRCLE_BRANCH" == "main" ]] || [[ "$CIRCLE_BRANCH" == "development" ]]; then
+              exit 0 # all good
+            fi
+
+            if [[ ! -z "$CIRCLE_PULL_REQUEST" ]]; then
+              exit 0 # all good, from branch and PR is created
+            fi
+
+            echo "Cancelling workflow..."
+
+            curl --request POST \
+              --url "https://circleci.com/api/v2/workflow/$CIRCLE_WORKFLOW_ID/cancel" \
+              --header "Circle-Token: $CIRCLECI_TOKEN"
+
+            sleep 30 # wait cancel action kick in.
+            exit 1   # in case it does not, fail the job.
+
+  build:
+    executor: ubuntu-vm
+    steps:
+      - run: echo "starting..."
+      - checkout
+      - configure-and-connect-openvpn
+      - docker-build-push:
+          repo: ecr-now-app-repo
+          tag: $CIRCLE_SHA1
+          dockerfile: Dockerfile-<< pipeline.parameters.az-environment >>
+          path: /home/circleci/project
+      - prepare-java-app-properties-and-save-to-workspace:
+          input: /home/circleci/project/src/main/resources/application-<< pipeline.parameters.az-environment >>.properties
+          output-file-name: ecr-now-app-env.json
+      - openvpn-disconnect
+
+  deploy:
+    executor: azure-cli/azure-docker
+    resource_class: small
+    steps:
+      - run: echo "starting..."
+      - azure-cli/login-with-service-principal
+      - attach_workspace:
+          at: /workspace/
+      - azure-deploy-docker-java:
+          app-name: << pipeline.parameters.az-environment >>-webapps-ecr-now-app
+          app-settings-json: "@/workspace/ecr-now-app-env.json"
+          docker-repo: ecr-now-app-repo
+          docker-tag: $CIRCLE_SHA1
+
+  health-check:
+    executor: ubuntu-vm
+    steps:
+      - health-check-app:
+          enabled: true
+          app-name: ecr-now-app
+          path: /api/health
+
+  auto-approve-dev-qa:
+    executor: docker-small
+    description: |
+      Auto approve deployment when on QA or development branch.
+          - CIRCLECI_TOKEN: can be generated by any user here https://app.circleci.com/settings/user/tokens
+    steps:
+      - when:
+          condition:
+            or:
+              - equal: [QA, << pipeline.git.branch >>]
+              - equal: [development, << pipeline.git.branch >>]
+          steps:
+            - run:
+                name: Auto-approve
+                command: |
+                  end=$((SECONDS+30)) 
+                  while true
+                  do
+                      if [[ $SECONDS -gt $end ]]; then
+                          echo "Auto approve timed out."
+                          exit -1
+                      fi
+
+                      curl -o jobs.json --silent --location --request GET \
+                          "https://circleci.com/api/v2/workflow/$CIRCLE_WORKFLOW_ID/job" \
+                          --header "Circle-Token: $CIRCLECI_TOKEN"
+
+                      hold_job=$(jq --raw-output '.items[]? | select(.name=="hold" and .status=="on_hold")' < jobs.json)
+
+                      hold_approval_request_id=$(echo $hold_job | jq --raw-output '.approval_request_id')
+
+                      if [ -z "$hold_approval_request_id" ]; then
+                          echo "approval_request_id was empty."
+                          echo "hold job was:"
+                          echo "'$hold_job'"
+                  
+                          # hold_job can be empty in two cases:
+                          #  - api returned an error
+                          #  - hold job was already approved
+                          [ -z $hold_job ] && echo "full output was:" && cat jobs.json && echo ""
+                          echo "trying again..."
+                      else
+                          echo "Approval request id is '$hold_approval_request_id'."
+                          break
+                      fi
+
+                      sleep 1;
+                  done
+
+                  APPROVAL_URL="https://circleci.com/api/v2/workflow/$CIRCLE_WORKFLOW_ID/approve/$hold_approval_request_id"
+                  echo "Posting to $APPROVAL_URL"
+                  curl --request POST --url "$APPROVAL_URL" --header "Circle-Token: $CIRCLECI_TOKEN"
+
+      - run: exit 0
+
+  deploy-gatekeeper:
+    description: |
+      Requires the following env-var:
+          - CIRCLECI_TOKEN: can be generated by any user here https://app.circleci.com/settings/user/tokens
+    executor: ubuntu-vm
+    steps:
+      - run:
+          name: Prevent deploy if not environment branches
+          command: |
+            echo "Current branch: $CIRCLE_BRANCH"
+            if [[ "$CIRCLE_BRANCH" != "QA" ]] && [[ "$CIRCLE_BRANCH" != "main" ]] && [[ "$CIRCLE_BRANCH" != "development" ]]; then
+              echo "Stopping workflow..."
+
+              curl --request POST \
+                --url "https://circleci.com/api/v2/workflow/$CIRCLE_WORKFLOW_ID/cancel" \
+                --header "Circle-Token: $CIRCLECI_TOKEN"
+            
+              sleep 30 # wait cancel action kick in.
+              exit 1   # in case it does not, fail the job.
+            fi
+
+workflows:
+  ecr-build-deploy-workflow:
+    jobs:
+      - execution-check:
+          context: << pipeline.parameters.dynamic-context >>
+
+      - build:
+          context: << pipeline.parameters.dynamic-context >>
+          requires:
+            - execution-check
+
+      - deploy-gatekeeper:
+          context: << pipeline.parameters.dynamic-context >>
+          requires:
+            - build
+
+      - auto-approve-dev-qa:
+          context: << pipeline.parameters.dynamic-context >>
+          requires:
+            - deploy-gatekeeper
+
+      - hold:
+          type: approval
+          requires:
+            - deploy-gatekeeper
+
+      - deploy:
+          context: << pipeline.parameters.dynamic-context >>
+          requires:
+            - hold
+
+      - health-check:
+          context: << pipeline.parameters.dynamic-context >>
+          requires:
+            - deploy
