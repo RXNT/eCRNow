@@ -85,7 +85,7 @@ commands:
                 command: |
                   sleep << parameters.wait-before >>
                   end=$((SECONDS+<< parameters.timeout-in-sec >>))
-                  health_check_endpoint="https://<< pipeline.parameters.az-environment >>-webapps-shared-<< parameters.app-name >>.<< pipeline.parameters.az-environment >>-baseinfra-ase-int.appserviceenvironment.net<< parameters.path >>"
+                  health_check_endpoint="https://<< pipeline.parameters.az-environment >>-webapps-ehr-<< parameters.app-name >>.<< pipeline.parameters.az-environment >>-baseinfra-ase-int.appserviceenvironment.net<< parameters.path >>"
                   echo "Health check endpoint: $health_check_endpoint"
                   while true; do
                     http_status=$(curl -X GET -s -I "$health_check_endpoint" | head -n 1 | cut -d$' ' -f2)
@@ -259,7 +259,7 @@ commands:
                 name: Swapping Pipeline Slot to Production
                 command: |
                   az webapp deployment slot swap -g << pipeline.parameters.resource-group >> \
-                    -n << pipeline.parameters.az-environment >>-webapps-<< parameters.app-name >> << pipeline.parameters.production-slot >> \
+                    -n << pipeline.parameters.az-environment >>-webapps-ehr-<< parameters.app-name >> << pipeline.parameters.production-slot >> \
                     --target-slot production
 
 
@@ -318,7 +318,7 @@ jobs:
       - attach_workspace:
           at: /workspace/
       - azure-deploy-docker-java:
-          app-name: << pipeline.parameters.az-environment >>-webapps-ecr-now-app
+          app-name: << pipeline.parameters.az-environment >>-webapps-ehr-ecr-now-app
           app-settings-json: "@/workspace/ecr-now-app-env.json"
           docker-repo: ecr-now-app-repo
           docker-tag: $CIRCLE_SHA1
