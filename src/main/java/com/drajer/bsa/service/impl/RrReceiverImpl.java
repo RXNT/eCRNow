@@ -21,6 +21,9 @@ import com.drajer.ecrapp.model.EicrTypes;
 import com.drajer.ecrapp.model.RXNTRrReceiverRequest;
 import com.drajer.ecrapp.model.ReportabilityResponse;
 import com.drajer.sof.utils.FhirContextInitializer;
+
+import static org.apache.commons.text.StringEscapeUtils.escapeJson;
+
 import java.time.Instant;
 import java.util.Date;
 import javax.transaction.Transactional;
@@ -270,27 +273,33 @@ public class RrReceiverImpl implements RrReceiver {
       HttpHeaders headers = restApiAuthorizerImpl.getAuthorizationHeader(null);
       headers.setContentType(MediaType.APPLICATION_JSON);
 
-      
-      int defaultId = 0;
-      int encounterId = tryParseInt(rrModel.getEncounterId().getValue().replace("enc-id-", ""), defaultId);
-      int patientId = Integer.parseInt(rrModel.getPatientId().getValue().replace("pa-id-", ""), defaultId);
+      String rrId = rrModel.getRrDocId().getRootValue();
+      String encounterId = rrModel.getEnctId();
+      String patientId = rrModel.getPatId();
 
-      if (encounterId == 0 || patientId == 0) {
-        logger.error("Invalid encounter/patient ID retrieved from Reportability Response document.");
+      if (encounterId == null || patientId == null || rrId == null) {
+        logger.error("Invalid encounter/patient/RR ID retrieved from Reportability Response document.");
         return false;
       }
 
-      RXNTRrReceiverRequest requestBody = new RXNTRrReceiverRequest(encounterId, patientId, rrXml);
+      RXNTRrReceiverRequest requestBody = new RXNTRrReceiverRequest(rrId, encounterId, patientId, rrXml);
 
-      HttpEntity<String> request = new HttpEntity<>(new JSONObject(requestBody).toString(), headers);
+      final String json = constructJson(requestBody);
+      logger.info("Request JSON: {}", json);
+
+      HttpEntity<String> request = new HttpEntity<>(json, headers);
   
-      ResponseEntity<?> response =
-          restTemplate.exchange(
-              hs.getHandOffResponseToRestApi(), HttpMethod.POST, request, String.class);
-  
-      if (response.getStatusCode().is2xxSuccessful()) {
-        isSubmitSuccess = true;
-      }
+      try {
+        ResponseEntity<?> response =
+        restTemplate.exchange(
+          hs.getHandOffResponseToRestApi(), HttpMethod.POST, request, String.class);
+          
+          if (response.getStatusCode().is2xxSuccessful()) {
+            isSubmitSuccess = true;
+          }
+        } catch (Exception ex) {
+          logger.error("Error submitting RR to EHRV8 Extension API: {}", ex.getMessage());
+        }
     }
 
     return isSubmitSuccess;
@@ -368,5 +377,24 @@ public class RrReceiverImpl implements RrReceiver {
           phm.getResponseProcessingInstruction());
       return null;
     }
+  }
+
+  /**
+   * Escape RXNT RR Receiver Request JSON.
+   *
+   * @param eicrXml EICR XML document
+   * @param ecr EICR object
+   * @return EICR Trigger JSON
+   */
+  private static String constructJson(final RXNTRrReceiverRequest data) {
+    return "{\"EncounterId\":\""
+        + escapeJson(data.getEncounterId())
+        + "\",\"PatientId\":\""
+        + escapeJson(data.getPatientId())
+        + "\",\"RrId\":\""
+        + escapeJson(data.getRrId())
+        + "\",\"RrXml\":\""
+        + escapeJson(data.getRrXml())
+        + "\"}";
   }
 }
