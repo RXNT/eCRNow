@@ -1,5 +1,6 @@
 package com.drajer.sof.launch;
 
+import static org.apache.commons.text.StringEscapeUtils.escapeJson;
 import com.drajer.ecrapp.model.Eicr;
 import com.drajer.ecrapp.model.ReportabilityResponse;
 import com.drajer.ecrapp.service.EicrRRService;
@@ -33,11 +34,21 @@ public class RRReceiverController {
       HttpServletRequest request,
       HttpServletResponse response) {
     try {
-
       logger.info(
-          " Reportability Response received for X-Correlation-ID: {} with X-Request-ID: {}",
-          xCorrelationIdHttpHeaderValue,
-          xRequestIdHttpHeaderValue);
+        " Reportability Response received for X-Correlation-ID: {} with X-Request-ID: {}",
+        xCorrelationIdHttpHeaderValue,
+        xRequestIdHttpHeaderValue
+      );
+
+      logger.info("RXNT request received in RR Receiver API.");
+
+      // logger.info("Request Body: {}", "{\"fhirUrl\":\""
+      //   + escapeJson(data.getFhirUrl())
+      //   + "\",\"responseType\":\""
+      //   + escapeJson(data.getResponseType())
+      //   + "\",\"rrXml\":\""
+      //   + escapeJson(data.getRrXml())
+      //   + "\"}");
 
       if (data.getResponseType().contentEquals(Eicr.MDN_RESPONSE_TYPE)) {
         logger.info(" Received MDN instead of RR on the RR API ");
@@ -60,9 +71,11 @@ public class RRReceiverController {
       }
 
     } catch (IllegalArgumentException e) {
+      logger.error("IllegalArgumentException in processing the request");
       logger.error(ERROR_IN_PROCESSING_THE_REQUEST, e);
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
     } catch (Exception e) {
+      logger.error("Exception in processing the request");
       logger.error(ERROR_IN_PROCESSING_THE_REQUEST, e);
       throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
     }

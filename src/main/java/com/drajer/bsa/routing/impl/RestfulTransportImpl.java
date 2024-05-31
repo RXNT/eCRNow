@@ -76,6 +76,7 @@ public class RestfulTransportImpl implements DataTransportInterface {
           data.getPhm().getxCorrelationId());
 
       final String json = constructJson(payload, data);
+      // logger.info("Request JSON: {}", json);
 
       if (logger.isDebugEnabled()) {
         logger.debug("Eicr Trigger request: {}", json);
@@ -93,6 +94,9 @@ public class RestfulTransportImpl implements DataTransportInterface {
 
       final ResponseEntity<String> response =
           restTemplate.exchange(ub.toString(), HttpMethod.POST, request, String.class);
+
+      logger.info("RXNT send-direct-email SUCCESS responseBody");
+      logger.info("send-direct-email responseBody: {}", response.getBody());
 
       bundleResponse = new JSONObject(response.getBody());
       bundleResponse.put("status", response.getStatusCodeValue());
