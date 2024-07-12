@@ -4,14 +4,17 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.fhirpath.IFhirPath;
 import ca.uhn.fhir.parser.IParser;
 import com.drajer.bsa.kar.action.BsaActionStatus;
+import com.drajer.bsa.kar.action.CheckTriggerCodeStatus;
 import com.drajer.bsa.kar.action.CheckTriggerCodeStatusList;
 import com.drajer.bsa.kar.model.BsaAction;
 import com.drajer.bsa.kar.model.FhirQueryFilter;
 import com.drajer.bsa.kar.model.KnowledgeArtifact;
 import com.drajer.bsa.model.BsaTypes;
+import com.drajer.bsa.model.BsaTypes.BsaActionStatusType;
 import com.drajer.bsa.model.BsaTypes.MessageType;
 import com.drajer.bsa.model.KarProcessingData;
 import com.drajer.eca.model.MatchedTriggerCodes;
+import com.drajer.fhirecr.FhirGeneratorConstants;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedOutputStream;
@@ -317,11 +320,16 @@ public class BsaServiceUtils {
 
         if (retInfo != null) {
 
-          logger.info(" Match Found for code {} | {}", retInfo.getValue0(), retInfo.getValue1());
+          logger.info(
+              " Match Found for Path {} and code {} | {}",
+              path,
+              retInfo.getValue0(),
+              retInfo.getValue1());
 
           if (mtc == null) {
             mtc = new MatchedTriggerCodes();
             mtc.setValueSet(vs.getUrl());
+            mtc.setValueSetOid(getValueSetOid(vs));
             mtc.setValueSetVersion(vs.getVersion());
             mtc.setMatchedPath(path);
             matchFound = true;
@@ -343,6 +351,24 @@ public class BsaServiceUtils {
     }
 
     return retVal;
+  }
+
+  private static String getValueSetOid(ValueSet vs) {
+
+    String vsOid = FhirGeneratorConstants.RCTC_OID;
+
+    if (vs.hasIdentifier()) {
+
+      List<Identifier> ids = vs.getIdentifier();
+
+      for (Identifier id : ids) {
+        if (id.hasSystem()
+            && id.getSystem().contentEquals(FhirGeneratorConstants.DOC_ID_SYSTEM)
+            && id.hasValue()) vsOid = id.getValue();
+      }
+    }
+
+    return vsOid;
   }
 
   public static Set<String> getMatchableCodes(CodeableConcept cc) {
@@ -686,14 +712,28 @@ public class BsaServiceUtils {
     return state;
   }
 
-  public static String getEncodedTriggerMatchStatus(CheckTriggerCodeStatusList ctc) {
+  public static String getEncodedTriggerMatchStatus(
+      CheckTriggerCodeStatusList ctc,
+      KarProcessingData kd,
+      String eicrId,
+      String actionId,
+      String actionType) {
     ObjectMapper mapper = new ObjectMapper();
 
     String state = null;
     try {
 
-      state = mapper.writeValueAsString(ctc);
+      for (CheckTriggerCodeStatus ctcs : ctc.getStatuses()) {
 
+        ctcs.setActionId(actionId);
+        ctcs.setActionType(BsaTypes.getActionType(actionType));
+        ctcs.setActionStatus(BsaActionStatusType.COMPLETED);
+        Set<String> eicrIds = new HashSet<String>();
+        eicrIds.add(eicrId);
+        ctcs.setOutputProduced(eicrIds);
+      }
+
+      state = mapper.writeValueAsString(ctc);
     } catch (JsonProcessingException e) {
 
       String msg = "Unable to update execution state";
