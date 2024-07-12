@@ -70,7 +70,6 @@ workflows:
             branches:
               only:
                 - development
-                - task/upstream-merge-staging
 
   build-test-workflow:
     jobs:

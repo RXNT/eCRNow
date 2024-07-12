@@ -342,6 +342,7 @@ jobs:
             or:
               - equal: [QA, << pipeline.git.branch >>]
               - equal: [development, << pipeline.git.branch >>]
+              - equal: [task/upstream-merge-staging, << pipeline.git.branch >>]
           steps:
             - run:
                 name: Auto-approve
