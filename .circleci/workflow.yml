@@ -348,7 +348,6 @@ jobs:
             or:
               - equal: [QA, << pipeline.git.branch >>]
               - equal: [development, << pipeline.git.branch >>]
-              - equal: [task/upstream-merge-staging, << pipeline.git.branch >>]
           steps:
             - run:
                 name: Auto-approve
@@ -403,7 +402,7 @@ jobs:
           name: Prevent deploy if not environment branches
           command: |
             echo "Current branch: $CIRCLE_BRANCH"
-            if [[ "$CIRCLE_BRANCH" != "QA" ]] && [[ "$CIRCLE_BRANCH" != "main" ]] && [[ "$CIRCLE_BRANCH" != "development" ]] && [[ "$CIRCLE_BRANCH" != "task/upstream-merge-staging" ]]; then
+            if [[ "$CIRCLE_BRANCH" != "QA" ]] && [[ "$CIRCLE_BRANCH" != "main" ]] && [[ "$CIRCLE_BRANCH" != "development" ]]; then
               echo "Stopping workflow..."
 
               curl --request POST \
