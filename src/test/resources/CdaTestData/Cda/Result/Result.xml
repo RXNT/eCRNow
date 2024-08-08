@@ -55,7 +55,7 @@
 <content ID="labTestResultValue4">Detected</content>
 </td>
 <td>
-<content ID="labTestResultValueDate4">2020-04-30T08:25:00.000Z</content>
+<content ID="labTestResultValueDate4">20200430082500+0000</content>
 </td>
 </tr>
 <tr>
@@ -66,7 +66,7 @@
 <content ID="labTestResultValue5">162.56|http://unitsofmeasure.org|cm</content>
 </td>
 <td>
-<content ID="labTestResultValueDate5">2020-04-29T13:32:00.000Z</content>
+<content ID="labTestResultValueDate5">20200429133200+0000</content>
 </td>
 </tr>
 <tr>
@@ -77,7 +77,7 @@
 <content ID="labTestResultValue6">70.3|http://unitsofmeasure.org|kg</content>
 </td>
 <td>
-<content ID="labTestResultValueDate6">2020-04-29T13:32:00.000Z</content>
+<content ID="labTestResultValueDate6">20200429133200+0000</content>
 </td>
 </tr>
 <tr>
@@ -85,10 +85,10 @@
 <content ID="labTestName7">http://loinc.org|94308-4</content>
 </td>
 <td>
-<content ID="labTestResultValue7"></content>
+<content ID="labTestResultValue7">Result#1:Unknown</content>
 </td>
 <td>
-<content ID="labTestResultValueDate7">2022-09-20T08:44:00-04:00</content>
+<content ID="labTestResultValueDate7">20220920084400-0400</content>
 </td>
 </tr>
 <tr>
@@ -96,10 +96,10 @@
 <content ID="labTestName8">http://loinc.org|94308-4</content>
 </td>
 <td>
-<content ID="labTestResultValue8"></content>
+<content ID="labTestResultValue8">Result#1:Unknown</content>
 </td>
 <td>
-<content ID="labTestResultValueDate8">2022-09-20T08:44:00-04:00</content>
+<content ID="labTestResultValueDate8">20220920084400-0400</content>
 </td>
 </tr>
 </tbody>
@@ -111,11 +111,13 @@
 <templateId root="2.16.840.1.113883.10.20.22.4.1" extension="2015-08-01"/>
 <id root="b56b6d6d-7d6e-4ff4-9e5c-f8625c7babe9"/><code code="68518-0" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"></code>
 <statusCode code="completed"/>
+<effectiveTime>
+<effectiveTime value="20200428194229+0000"/><effectiveTime value="20200428194229+0000"/></effectiveTime>
 <component>
 <observation classCode="OBS" moodCode="EVN">
 <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
 <templateId root="2.16.840.1.113883.10.20.22.4.2" extension="2015-08-01"/>
-<id root="2.16.840.1.113883.1.1.1.1" extension="https://fhir-open.cerner.com/r4/ec2458f2-1e24-41c8-b71b-0e701af7583d/Observation/SH-73079797-q4625809/_history/73079797"/>
+<id root="2.16.840.1.113883.1.1.1.1" extension="SH-73079797-q4625809"/>
 <code code="68518-0" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"><originalText>
 <reference value="#labTestName1"/>
 </originalText>
@@ -136,18 +138,20 @@
 <templateId root="2.16.840.1.113883.10.20.22.4.1" extension="2015-08-01"/>
 <id root="b56b6d6d-7d6e-4ff4-9e5c-f8625c7babe9"/><code code="72166-2" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"></code>
 <statusCode code="completed"/>
+<effectiveTime>
+<effectiveTime value="20200428194229+0000"/><effectiveTime value="20200428194229+0000"/></effectiveTime>
 <component>
 <observation classCode="OBS" moodCode="EVN">
 <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
 <templateId root="2.16.840.1.113883.10.20.22.4.2" extension="2015-08-01"/>
-<id root="2.16.840.1.113883.1.1.1.1" extension="https://fhir-open.cerner.com/r4/ec2458f2-1e24-41c8-b71b-0e701af7583d/Observation/SH-93-73079787/_history/73079787"/>
+<id root="2.16.840.1.113883.1.1.1.1" extension="SH-93-73079787"/>
 <code code="72166-2" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"><originalText>
 <reference value="#labTestName2"/>
 </originalText>
 </code>
 <statusCode code="completed"/>
 <effectiveTime nullFlavor="NI"/>
-<value xsi:type="ST" nullFlavor="NI"/>
+<value xsi:type="ST">No Value</value>
 </observation>
 </component>
 </organizer>
@@ -158,11 +162,13 @@
 <templateId root="2.16.840.1.113883.10.20.22.4.1" extension="2015-08-01"/>
 <id root="b56b6d6d-7d6e-4ff4-9e5c-f8625c7babe9"/><code code="72166-2" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"></code>
 <statusCode code="completed"/>
+<effectiveTime>
+<effectiveTime value="20200428194229+0000"/><effectiveTime value="20200428194229+0000"/></effectiveTime>
 <component>
 <observation classCode="OBS" moodCode="EVN">
 <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
 <templateId root="2.16.840.1.113883.10.20.22.4.2" extension="2015-08-01"/>
-<id root="2.16.840.1.113883.1.1.1.1" extension="https://fhir-open.cerner.com/r4/ec2458f2-1e24-41c8-b71b-0e701af7583d/Observation/SH-73079787-q4625825/_history/73079787"/>
+<id root="2.16.840.1.113883.1.1.1.1" extension="SH-73079787-q4625825"/>
 <code code="72166-2" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"><originalText>
 <reference value="#labTestName3"/>
 </originalText>
@@ -180,18 +186,19 @@
 <templateId root="2.16.840.1.113883.10.20.22.4.1" extension="2015-08-01"/>
 <id root="b56b6d6d-7d6e-4ff4-9e5c-f8625c7babe9"/><code code="94500-6" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"></code>
 <statusCode code="completed"/>
+<effectiveTime>
+<effectiveTime value="20200428194229+0000"/><effectiveTime value="20200428194229+0000"/></effectiveTime>
 <component>
 <observation classCode="OBS" moodCode="EVN">
 <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
 <templateId root="2.16.840.1.113883.10.20.22.4.2" extension="2015-08-01"/>
-<id root="2.16.840.1.113883.1.1.1.1" extension="https://fhir-open.cerner.com/r4/ec2458f2-1e24-41c8-b71b-0e701af7583d/Observation/M-197287553/_history/1"/>
+<id root="2.16.840.1.113883.1.1.1.1" extension="M-197287553"/>
 <code code="94500-6" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"><originalText>
 <reference value="#labTestName4"/>
 </originalText>
 </code>
 <statusCode code="completed"/>
-<effectiveTime value="20200430082500+0000"/>
-<value xsi:type="CD" code="260373001" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED-CT" displayName="Detected (qualifier value)"><originalText>
+<effectiveTime value="20200428194229+0000"/><value xsi:type="CD" code="260373001" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED-CT" displayName="Detected (qualifier value)"><originalText>
 <reference value="#labTestName4"/>
 </originalText>
 </value>
@@ -207,18 +214,19 @@
 <id root="b56b6d6d-7d6e-4ff4-9e5c-f8625c7babe9"/><code code="8302-2" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"><translation code="3137-7" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"/>
 </code>
 <statusCode code="completed"/>
+<effectiveTime>
+<effectiveTime value="20200428194229+0000"/><effectiveTime value="20200428194229+0000"/></effectiveTime>
 <component>
 <observation classCode="OBS" moodCode="EVN">
 <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
 <templateId root="2.16.840.1.113883.10.20.22.4.2" extension="2015-08-01"/>
-<id root="2.16.840.1.113883.1.1.1.1" extension="https://fhir-open.cerner.com/r4/ec2458f2-1e24-41c8-b71b-0e701af7583d/Observation/M-197287271/_history/1-1"/>
+<id root="2.16.840.1.113883.1.1.1.1" extension="M-197287271-1"/>
 <code code="8480-6" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Systolic blood pressure"><originalText>
 <reference value="#labTestName5"/>
 </originalText>
 </code>
 <statusCode code="completed"/>
-<effectiveTime value="20200429133200+0000"/>
-<value xsi:type="PQ" value="162.56" unit="cm"/>
+<effectiveTime value="20200428194229+0000"/><value xsi:type="PQ" value="162.56" unit="cm"/>
 </observation>
 </component>
 </organizer>
@@ -230,19 +238,20 @@
 <id root="b56b6d6d-7d6e-4ff4-9e5c-f8625c7babe9"/><code code="79348-9" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"><translation code="29463-7" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"/>
 </code>
 <statusCode code="completed"/>
+<effectiveTime>
+<effectiveTime value="20200428194229+0000"/><effectiveTime value="20200428194229+0000"/></effectiveTime>
 <component>
 <observation classCode="OBS" moodCode="EVN">
 <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
 <templateId root="2.16.840.1.113883.10.20.22.4.2" extension="2015-08-01"/>
-<id root="2.16.840.1.113883.1.1.1.1" extension="https://fhir-open.cerner.com/r4/ec2458f2-1e24-41c8-b71b-0e701af7583d/Observation/M-197287269/_history/1"/>
+<id root="2.16.840.1.113883.1.1.1.1" extension="M-197287269"/>
 <code code="79348-9" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"><originalText>
 <reference value="#labTestName6"/>
 </originalText>
 <translation code="29463-7" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"/>
 </code>
 <statusCode code="completed"/>
-<effectiveTime value="20200429133200+0000"/>
-<value xsi:type="PQ" value="70.3" unit="kg"/>
+<effectiveTime value="20200428194229+0000"/><value xsi:type="PQ" value="70.3" unit="kg"/>
 </observation>
 </component>
 </organizer>
@@ -257,14 +266,14 @@
 <observation classCode="OBS" moodCode="EVN">
 <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
 <templateId root="2.16.840.1.113883.10.20.22.4.2" extension="2015-08-01"/>
-<id root="2.16.840.1.113883.1.1.1.1" extension="Observation/a-11287.inptlabobservation-601/_history/73079797"/>
-<code code="363905002" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED-CT" displayName="Details of alcohol drinking behavior (observable entity)"><originalText>
+<id root="2.16.840.1.113883.1.1.1.1" extension="a-11287.inptlabobservation-601"/>
+<code code="94308-4" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"><originalText>
 <reference value="#labTestName7"/>
 </originalText>
 </code>
 <statusCode code="completed"/>
 <effectiveTime nullFlavor="NI"/>
-<value xsi:type="ST" nullFlavor="NI"/>
+<value xsi:type="ST">No Value</value>
 </observation>
 </component>
 </organizer>
@@ -279,14 +288,14 @@
 <observation classCode="OBS" moodCode="EVN">
 <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
 <templateId root="2.16.840.1.113883.10.20.22.4.2" extension="2015-08-01"/>
-<id root="2.16.840.1.113883.1.1.1.1" extension="Observation/a-11287.inptlabobservation-601/_history/73079797"/>
-<code code="363905002" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED-CT" displayName="Details of alcohol drinking behavior (observable entity)"><originalText>
+<id root="2.16.840.1.113883.1.1.1.1" extension="a-11287.inptlabobservation-601"/>
+<code code="94308-4" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC"><originalText>
 <reference value="#labTestName8"/>
 </originalText>
 </code>
 <statusCode code="completed"/>
 <effectiveTime nullFlavor="NI"/>
-<value xsi:type="ST" nullFlavor="NI"/>
+<value xsi:type="ST">No Value</value>
 </observation>
 </component>
 </organizer>
