@@ -160,6 +160,9 @@ commands:
       - azure-cli/install
       - azure-cli/login-with-service-principal
       - run:
+          name: Select AZ Subscription
+          command: az account set --subscription $AZURE_SP_SUBSCRIPTION
+      - run:
           name: Install openvpn
           command: sudo apt-get install openvpn -y
       - run:
@@ -315,6 +318,9 @@ jobs:
     steps:
       - run: echo "starting..."
       - azure-cli/login-with-service-principal
+      - run:
+          name: Select AZ Subscription
+          command: az account set --subscription $AZURE_SP_SUBSCRIPTION
       - attach_workspace:
           at: /workspace/
       - azure-deploy-docker-java:

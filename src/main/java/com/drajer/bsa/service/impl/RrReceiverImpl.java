@@ -8,9 +8,11 @@ import ca.uhn.fhir.rest.server.exceptions.UnclassifiedServerFailureException;
 
 import com.drajer.bsa.auth.impl.RestApiAuthorizerImpl;
 import com.drajer.bsa.dao.HealthcareSettingsDao;
+import com.drajer.bsa.dao.NotificationContextDao;
 import com.drajer.bsa.dao.PublicHealthMessagesDao;
 import com.drajer.bsa.ehr.service.EhrQueryService;
 import com.drajer.bsa.model.HealthcareSetting;
+import com.drajer.bsa.model.NotificationContext;
 import com.drajer.bsa.model.PublicHealthMessage;
 import com.drajer.bsa.service.RrReceiver;
 import com.drajer.cda.parser.CdaIi;
@@ -21,10 +23,15 @@ import com.drajer.ecrapp.model.EicrTypes;
 import com.drajer.ecrapp.model.RXNTRrReceiverRequest;
 import com.drajer.ecrapp.model.ReportabilityResponse;
 import com.drajer.sof.utils.FhirContextInitializer;
+
+import static org.apache.commons.text.StringEscapeUtils.escapeJson;
+
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 import javax.transaction.Transactional;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.hl7.fhir.r4.model.DocumentReference;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -64,6 +71,7 @@ public class RrReceiverImpl implements RrReceiver {
   @Autowired FhirContextInitializer fhirContextInitializer;
 
   @Autowired RestApiAuthorizerImpl restApiAuthorizerImpl;
+  @Autowired NotificationContextDao ncDao;
 
   /**
    * The method is used to handle a failure MDN that is received from the Direct channel.
@@ -83,16 +91,18 @@ public class RrReceiverImpl implements RrReceiver {
 
     if (phm != null) {
 
-      logger.info(" Found the Eicr for correlation Id: {}", xCorrelationId);
+      logger.info(
+          " Found the Eicr for correlation Id: {}", StringEscapeUtils.escapeJava(xCorrelationId));
       phm.setResponseMessageType(EicrTypes.RrType.FAILURE_MDN.toString());
-      phm.setxRequestId(xRequestId);
+      // phm.setxRequestId(xRequestId);
       phm.setFailureResponseData(data.getRrXml());
 
       phDao.saveOrUpdate(phm);
 
     } else {
       String errorMsg =
-          "Unable to find Public Health Message for Correlation Id: " + xCorrelationId;
+          "Unable to find Public Health Message for Correlation Id: "
+              + StringEscapeUtils.escapeJava(xCorrelationId);
       logger.error(errorMsg);
       throw new IllegalArgumentException(errorMsg);
 
@@ -133,7 +143,7 @@ public class RrReceiverImpl implements RrReceiver {
         logger.info(" Found the ecr for doc Id = {}", eicrDocId.getRootValue());
 
         phm.setCdaResponseData(data.getRrXml());
-        phm.setxRequestId(xRequestId);
+        // phm.setxRequestId(xRequestId);
         phm.setResponseDataId(rrDocId.getRootValue());
         phm.setResponseMessageType(EicrTypes.RrType.REPORTABILITY_RESPONSE.toString());
         phm.setResponseReceivedTime(Date.from(Instant.now()));
@@ -202,7 +212,7 @@ public class RrReceiverImpl implements RrReceiver {
               EicrTypes.RrProcessingStatus.HEALTHCARE_SETTING_NOT_FOUND_FOR_RR.toString());
         }
 
-        // Save the state, no matter what so that they can be reporcessed.
+        // Save the state, no matter what so that they can be reprocessed.
         phDao.saveOrUpdate(phm);
 
       } else {
@@ -270,27 +280,33 @@ public class RrReceiverImpl implements RrReceiver {
       HttpHeaders headers = restApiAuthorizerImpl.getAuthorizationHeader(null);
       headers.setContentType(MediaType.APPLICATION_JSON);
 
-      
-      int defaultId = 0;
-      int encounterId = tryParseInt(rrModel.getEncounterId().getValue().replace("enc-id-", ""), defaultId);
-      int patientId = Integer.parseInt(rrModel.getPatientId().getValue().replace("pa-id-", ""), defaultId);
+      String rrId = rrModel.getRrDocId().getRootValue();
+      String encounterId = rrModel.getEnctId();
+      String patientId = rrModel.getPatId();
 
-      if (encounterId == 0 || patientId == 0) {
-        logger.error("Invalid encounter/patient ID retrieved from Reportability Response document.");
+      if (encounterId == null || patientId == null || rrId == null) {
+        logger.error("Invalid encounter/patient/RR ID retrieved from Reportability Response document.");
         return false;
       }
 
-      RXNTRrReceiverRequest requestBody = new RXNTRrReceiverRequest(encounterId, patientId, rrXml);
+      RXNTRrReceiverRequest requestBody = new RXNTRrReceiverRequest(rrId, encounterId, patientId, rrXml);
 
-      HttpEntity<String> request = new HttpEntity<>(new JSONObject(requestBody).toString(), headers);
+      final String json = constructJson(requestBody);
+      logger.info("Request JSON: {}", json);
+
+      HttpEntity<String> request = new HttpEntity<>(json, headers);
   
-      ResponseEntity<?> response =
-          restTemplate.exchange(
-              hs.getHandOffResponseToRestApi(), HttpMethod.POST, request, String.class);
-  
-      if (response.getStatusCode().is2xxSuccessful()) {
-        isSubmitSuccess = true;
-      }
+      try {
+        ResponseEntity<?> response =
+        restTemplate.exchange(
+          hs.getHandOffResponseToRestApi(), HttpMethod.POST, request, String.class);
+          
+          if (response.getStatusCode().is2xxSuccessful()) {
+            isSubmitSuccess = true;
+          }
+        } catch (Exception ex) {
+          logger.error("Error submitting RR to EHRV8 Extension API: {}", ex.getMessage());
+        }
     }
 
     return isSubmitSuccess;
@@ -301,6 +317,12 @@ public class RrReceiverImpl implements RrReceiver {
 
     // Get the AccessToken using the HealthcareSetting
     JSONObject tokenResponse = ehrService.getAuthorizationToken(hs);
+    String ehrContext = null;
+    if (phm != null) {
+      NotificationContext nc =
+          ncDao.getNotificationContextById(UUID.fromString(phm.getNotificationId()));
+      if (nc != null) ehrContext = nc.getEhrLaunchContext();
+    }
 
     if (tokenResponse != null) {
 
@@ -314,7 +336,7 @@ public class RrReceiverImpl implements RrReceiver {
       // Initialize the Client
       IGenericClient client =
           fhirContextInitializer.createClient(
-              context, hs.getFhirServerBaseURL(), accessToken, phm.getxRequestId());
+              context, hs.getFhirServerBaseURL(), accessToken, phm.getxRequestId(), ehrContext);
 
       MethodOutcome outcome = fhirContextInitializer.submitResource(client, docRef);
       if (outcome != null && outcome.getCreated()) {
@@ -329,7 +351,9 @@ public class RrReceiverImpl implements RrReceiver {
         phm.setResponseEhrDocRefId(outcome.getId().getIdPart());
 
       } else {
-        String errorMsg = "Unable to post RR response to FHIR server: " + hs.getFhirServerBaseURL();
+        String errorMsg =
+            "Unable to post RR response to FHIR server: "
+                + StringEscapeUtils.escapeJava(hs.getFhirServerBaseURL());
         logger.error(errorMsg);
         throw new UnclassifiedServerFailureException(500, errorMsg);
       }
@@ -368,5 +392,24 @@ public class RrReceiverImpl implements RrReceiver {
           phm.getResponseProcessingInstruction());
       return null;
     }
+  }
+
+  /**
+   * Escape RXNT RR Receiver Request JSON.
+   *
+   * @param eicrXml EICR XML document
+   * @param ecr EICR object
+   * @return EICR Trigger JSON
+   */
+  private static String constructJson(final RXNTRrReceiverRequest data) {
+    return "{\"EncounterId\":\""
+        + escapeJson(data.getEncounterId())
+        + "\",\"PatientId\":\""
+        + escapeJson(data.getPatientId())
+        + "\",\"RrId\":\""
+        + escapeJson(data.getRrId())
+        + "\",\"RrXml\":\""
+        + escapeJson(data.getRrXml())
+        + "\"}";
   }
 }

@@ -56,6 +56,9 @@ public class CdaEicrGeneratorTest extends BaseGeneratorTest {
         .thenReturn(getCdaHeaderData());
     PowerMockito.when(CdaGeneratorUtils.getXmlForIIUsingGuid()).thenReturn(XML_FOR_II_USING_GUID);
 
+    PowerMockito.when(CdaGeneratorUtils.getGuid())
+        .thenReturn("b56b6d6d-7d6e-4ff4-9e5c-f8625c7babe9");
+
     String actualXml =
         CdaEicrGeneratorFromR4.convertR4FhirBundletoCdaEicr(r4Data, launchDetails, eicr);
 
@@ -205,7 +208,7 @@ public class CdaEicrGeneratorTest extends BaseGeneratorTest {
             + "<versionNumber value=\"43\"/>\r\n"
             + "<recordTarget>\r\n"
             + "<patientRole>\r\n"
-            + "<id root=\"2.16.840.1.113883.1.1.1.1\" extension=\"Patient/a-11287.E-4237\"/>\r\n"
+            + "<id root=\"2.16.840.1.113883.1.1.1.1\" extension=\"a-11287.E-4237\"/>\r\n"
             + "<addr use=\"HP\">\r\n"
             + "<streetAddressLine>2221 HOME STREET</streetAddressLine>\r\n"
             + "<city>SALT LAKE CITY</city>\r\n"
@@ -329,7 +332,7 @@ public class CdaEicrGeneratorTest extends BaseGeneratorTest {
             + "</custodian>\r\n"
             + "<componentOf>\r\n"
             + "<encompassingEncounter>\r\n"
-            + "<id root=\"2.16.840.1.113883.1.1.1.1\" extension=\"Encounter/a-11287.stay-9787\"/>\r\n"
+            + "<id root=\"2.16.840.1.113883.1.1.1.1\" extension=\"a-11287.stay-9787\"/>\r\n"
             + "<id root=\"2.16.840.1.113883.1.1.1.1\" extension=\"a-11287.stay-9787\"/>\r\n"
             + "<code code=\"IMP\" codeSystem=\"2.16.840.1.113883.5.4\" codeSystemName=\"v3-ActCode\" displayName=\"inpatient encounter\"></code>\r\n"
             + "<effectiveTime>\r\n"
@@ -369,7 +372,7 @@ public class CdaEicrGeneratorTest extends BaseGeneratorTest {
             + "</responsibleParty>\r\n"
             + "<location>\r\n"
             + "<healthCareFacility>\r\n"
-            + "<id root=\"2.16.840.1.113883.1.1.1.1\" extension=\"Location/a-11287.Department-1\"/>\r\n"
+            + "<id root=\"2.16.840.1.113883.1.1.1.1\" extension=\"a-11287.Department-1\"/>\r\n"
             + "<code code=\"CHR\" codeSystem=\"2.16.840.1.113883.5.111\" codeSystemName=\"v3-RoleCode\" displayName=\"Chronic Care Facility\"></code>\r\n"
             + "<location>\r\n"
             + "<addr>\r\n"

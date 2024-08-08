@@ -2,8 +2,7 @@ package com.drajer.bsa.auth.impl;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 
@@ -14,18 +13,22 @@ import com.drajer.bsa.model.KarProcessingData;
 public class RestApiAuthorizerImpl implements RestApiAuthorizationHeaderIf {
     private final Logger logger = LoggerFactory.getLogger(RestApiAuthorizerImpl.class);
 
-    @Autowired private Environment environment;
+    @Value("${rxnt.api.key}")
+    String apiKey;
 
     @Override
     public HttpHeaders getAuthorizationHeader(KarProcessingData data) {
 
         HttpHeaders headers = new HttpHeaders();
         logger.info("Fetching the AccessToken");
-
-        String securityToken = environment.getRequiredProperty("rxnt.api.key");
+        
+        if (apiKey == null || apiKey.isEmpty()) {
+            logger.error("Invalid API key");
+        }
 
         // Set Authorization Header
-        headers.add("X-Api-Key", securityToken);
+        headers.add("X-API-Key", apiKey);
+
         return headers;
     }
 }

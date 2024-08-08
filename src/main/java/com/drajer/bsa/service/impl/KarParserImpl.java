@@ -1,5 +1,6 @@
 package com.drajer.bsa.service.impl;
 
+import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import com.drajer.bsa.auth.AuthorizationUtils;
 import com.drajer.bsa.dao.HealthcareSettingsDao;
@@ -106,7 +107,12 @@ public class KarParserImpl implements KarParser {
   private static final String VARIABLE_EXTENSION_URL =
       "http://hl7.org/fhir/StructureDefinition/variable";
 
+  private static final String US_SPECIFICATION_LIBRARY_PROFILE =
+      "http://hl7.org/fhir/us/ecr/StructureDefinition/us-ph-specification-library";
+
   private static final String RCTC_DEFAULT_SYSTEM = "urn:ietf:rfc:3986";
+
+  private static final String VERSION3_ERSD = "3.";
 
   private final Logger logger = LoggerFactory.getLogger(KarParserImpl.class);
   private static final Logger logger2 = LoggerFactory.getLogger(KarParserImpl.class);
@@ -191,14 +197,18 @@ public class KarParserImpl implements KarParser {
 
   private static final String JSON_KAR_EXT = "json";
   private static final String RECEIVER_ADDRESS_URL =
-      "http://hl7.org/fhir/us/medmorph/StructureDefinition/ext-receiverAddress";
+      "http://hl7.org/fhir/us/medmorph/StructureDefinition/us-ph-receiver-endpoint";
 
   private static final String LOCAL_HOST_REPO_BASE_URL = "http://localhost";
   private static final String LOCAL_HOST_REPO_NAME = "local-repo";
   private static final String PH_QUERY_EXTENSION_URL =
       "http://hl7.org/fhir/us/ecr/StructureDefinition/us-ph-fhirquerypattern-extension";
+  private static final String MEDMORPH_QUERY_EXTENSION_URL =
+      "http://hl7.org/fhir/us/medmorph/StructureDefinition/us-ph-fhirquerypattern-extension";
   private static final String PH_RELATED_DATA_EXTENSION_URL =
       "http://hl7.org/fhir/us/ecr/StructureDefinition/us-ph-relateddata-extension";
+  private static final String MEDMORPH_RELATED_DATA_EXTENSION_URL =
+      "http://hl7.org/fhir/us/medmorph/StructureDefinition/us-ph-relateddata-extension";
 
   private static HashMap<String, String> actionClasses = new HashMap<>();
 
@@ -366,6 +376,23 @@ public class KarParserImpl implements KarParser {
           logger.info(" Processing Library");
 
           Library lib = (Library) comp.getResource();
+
+          // Add Version
+          if (lib.hasMeta() && lib.getMeta().hasProfile() && lib.getMeta().hasVersionId()) {
+
+            List<CanonicalType> profiles = lib.getMeta().getProfile();
+
+            for (CanonicalType prof : profiles) {
+
+              if (prof.getValue().contains(US_SPECIFICATION_LIBRARY_PROFILE)
+                  && lib.getMeta().getVersionId().startsWith(VERSION3_ERSD)) {
+                logger.info(" Adding Version {} to KAR", lib.getMeta().getVersionId());
+                art.setKarVersion(lib.getMeta().getVersionId());
+                break;
+              }
+            }
+          }
+
           if (art.getKarName() == null) {
             art.setKarName(lib.getName());
           }
@@ -503,6 +530,7 @@ public class KarParserImpl implements KarParser {
         action.setActionId(act.getId(), plan.getUrl());
         action.setScheduler(scheduler);
         action.setJsonParser(jsonParser);
+        action.setXmlParser(FhirContext.forR4().newXmlParser());
         action.setRestTemplate(restTemplate);
         action.setIgnoreTimers(ignoreTimers);
         action.setType(BsaTypes.getActionType(cd.getCode()));
@@ -532,6 +560,7 @@ public class KarParserImpl implements KarParser {
     action.setActionId("check-response", plan.getUrl());
     action.setScheduler(scheduler);
     action.setJsonParser(jsonParser);
+    action.setXmlParser(FhirContext.forR4().newXmlParser());
     action.setRestTemplate(restTemplate);
     action.setIgnoreTimers(ignoreTimers);
     action.setType(ActionType.CHECK_RESPONSE);
@@ -601,6 +630,7 @@ public class KarParserImpl implements KarParser {
 
   private void populateInputDataReq(PlanDefinitionActionComponent ac, BsaAction action) {
 
+    logger.info(" Action Id {}", action.getActionId());
     List<DataRequirement> drs = ac.getInput();
     action.setInputData(drs);
 
@@ -611,6 +641,10 @@ public class KarParserImpl implements KarParser {
 
         // Get Query Extensions to identify default queries.
         Extension queryExt = dr.getExtensionByUrl(PH_QUERY_EXTENSION_URL);
+
+        if (queryExt == null) {
+          queryExt = dr.getExtensionByUrl(MEDMORPH_QUERY_EXTENSION_URL);
+        }
 
         FhirQueryFilter query = new FhirQueryFilter();
         query.setResourceType(rt);
@@ -627,6 +661,10 @@ public class KarParserImpl implements KarParser {
 
         // Get Related Data Ids to reuse data already accessed.
         Extension relatedDataExt = dr.getExtensionByUrl(PH_RELATED_DATA_EXTENSION_URL);
+
+        if (relatedDataExt == null) {
+          relatedDataExt = dr.getExtensionByUrl(MEDMORPH_RELATED_DATA_EXTENSION_URL);
+        }
 
         if (relatedDataExt != null && relatedDataExt.getValue() != null) {
 
@@ -685,6 +723,7 @@ public class KarParserImpl implements KarParser {
     }
 
     action.setJsonParser(this.jsonParser);
+    action.setXmlParser(FhirContext.forR4().newXmlParser());
     action.setIgnoreTimers(this.ignoreTimers);
 
     if (action.getType() == ActionType.EVALUATE_MEASURE) {
@@ -758,6 +797,7 @@ public class KarParserImpl implements KarParser {
           subAction.setActionId(act.getId(), plan.getUrl());
           subAction.setScheduler(scheduler);
           subAction.setJsonParser(jsonParser);
+          subAction.setXmlParser(FhirContext.forR4().newXmlParser());
           subAction.setRestTemplate(restTemplate);
           subAction.setIgnoreTimers(ignoreTimers);
           subAction.setType(BsaTypes.getActionType(cd.getCode()));
